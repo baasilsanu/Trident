@@ -126,10 +126,15 @@ class Simulation:
     def generate_eta_batch(self):
         return np.random.normal(0, 1, size=(self.num_steps, 1))
 
+    # def simulate(self):
+    #     self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals, self.k_e_psi_e_vals, self.k_e_b_e_vals, self.k_e_psi_plus_vals, self.k_e_b_plus_vals, self.heat_flux_psi_e_b_e_vals, self.heat_flux_psi_e_b_plus_vals, self.b_e_psi_plus_vals, self.b_e_b_plus_vals, self.psi_plus_b_plus_vals, self.switch_times = simulate_numba(
+    #         self.num_steps, self.k_e_square, self.W_e, self.L_e_plus, self.W_plus, self.L_plus_e, self.eta_batch, self.dt, self.epsilon, self.r_m, self.k_plus_square, self.k)
+    #     return len(self.switch_times), [t * self.dt for t in self.switch_times]
+
     def simulate(self):
-        self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals, self.k_e_psi_e_vals, self.k_e_b_e_vals, self.k_e_psi_plus_vals, self.k_e_b_plus_vals, self.heat_flux_psi_e_b_e_vals, self.heat_flux_psi_e_b_plus_vals, self.b_e_psi_plus_vals, self.b_e_b_plus_vals, self.psi_plus_b_plus_vals, self.switch_times = simulate_numba(
+        self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals = simulate_numba(
             self.num_steps, self.k_e_square, self.W_e, self.L_e_plus, self.W_plus, self.L_plus_e, self.eta_batch, self.dt, self.epsilon, self.r_m, self.k_plus_square, self.k)
-        return len(self.switch_times), [t * self.dt for t in self.switch_times]
+        # return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
     # def extract_reversal_data(self, window_size=5000):
     #     reversal_data = {}

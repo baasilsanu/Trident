@@ -1,11 +1,11 @@
-# import pandas as pd
+import pandas as pd
 import numpy as np
 # import matplotlib.pyplot as plt
 from numba import jit
 # import os
 # import random
 # import psycopg2
-# import json
+import json
 
 @jit(nopython=True)
 def simulate_numba(
@@ -31,15 +31,15 @@ def simulate_numba(
     U_history = np.zeros(num_steps)
     R_vals = np.zeros(num_steps)
 
-    # k_e_psi_e_vals = np.zeros(num_steps)
-    # k_e_b_e_vals = np.zeros(num_steps)
-    # k_e_psi_plus_vals = np.zeros(num_steps)
-    # k_e_b_plus_vals = np.zeros(num_steps)
-    # heat_flux_psi_e_b_e_vals = np.zeros(num_steps)
-    # heat_flux_psi_e_b_plus_vals = np.zeros(num_steps)
-    # b_e_psi_plus_vals = np.zeros(num_steps)
-    # b_e_b_plus_vals = np.zeros(num_steps)
-    # psi_plus_b_plus_vals = np.zeros(num_steps)
+    k_e_psi_e_vals = np.zeros(num_steps)
+    k_e_b_e_vals = np.zeros(num_steps)
+    k_e_psi_plus_vals = np.zeros(num_steps)
+    k_e_b_plus_vals = np.zeros(num_steps)
+    heat_flux_psi_e_b_e_vals = np.zeros(num_steps)
+    heat_flux_psi_e_b_plus_vals = np.zeros(num_steps)
+    b_e_psi_plus_vals = np.zeros(num_steps)
+    b_e_b_plus_vals = np.zeros(num_steps)
+    psi_plus_b_plus_vals = np.zeros(num_steps)
 
     # switch_times = []
 
@@ -73,23 +73,23 @@ def simulate_numba(
         phi_plus_history[i, 0] = phi_plus[0]
         phi_plus_history[i, 1] = phi_plus[1]
 
-        # psi_e = phi_e[0]
-        # b_e = phi_e[1]
-        # psi_plus = phi_plus[0]
-        # b_plus = phi_plus[1]
+        psi_e = phi_e[0]
+        b_e = phi_e[1]
+        psi_plus = phi_plus[0]
+        b_plus = phi_plus[1]
 
         U_history[i] = U
         R_vals[i] = R
 
-        # k_e_psi_e_vals[i] = psi_e*psi_e
-        # k_e_b_e_vals[i] = b_e*b_e
-        # k_e_psi_plus_vals[i] = psi_plus*psi_plus
-        # k_e_b_plus_vals[i] = b_plus*b_plus
-        # heat_flux_psi_e_b_e_vals[i] = psi_e*b_e
-        # heat_flux_psi_e_b_plus_vals[i] = psi_e*b_plus
-        # b_e_psi_plus_vals[i] = b_e*psi_plus
-        # b_e_b_plus_vals[i] = b_e*b_plus
-        # psi_plus_b_plus_vals[i] = psi_plus*b_plus
+        k_e_psi_e_vals[i] = psi_e*psi_e
+        k_e_b_e_vals[i] = b_e*b_e
+        k_e_psi_plus_vals[i] = psi_plus*psi_plus
+        k_e_b_plus_vals[i] = b_plus*b_plus
+        heat_flux_psi_e_b_e_vals[i] = psi_e*b_e
+        heat_flux_psi_e_b_plus_vals[i] = psi_e*b_plus
+        b_e_psi_plus_vals[i] = b_e*psi_plus
+        b_e_b_plus_vals[i] = b_e*b_plus
+        psi_plus_b_plus_vals[i] = psi_plus*b_plus
         
 
 
@@ -97,7 +97,21 @@ def simulate_numba(
         #     if U_history[i - 1] > 0 and U_history[i] < 0:
         #         switch_times.append(i)
     # return phi_e_history, phi_plus_history, U_history, R_vals, k_e_psi_e_vals, k_e_b_e_vals, k_e_psi_plus_vals, k_e_b_plus_vals, heat_flux_psi_e_b_e_vals, heat_flux_psi_e_b_plus_vals, b_e_psi_plus_vals, b_e_b_plus_vals, psi_plus_b_plus_vals, switch_times
-    return phi_e_history, phi_plus_history, U_history, R_vals
+    return (
+        phi_e_history,
+        phi_plus_history,
+        U_history,
+        R_vals,
+        k_e_psi_e_vals,
+        k_e_b_e_vals,
+        k_e_psi_plus_vals,
+        k_e_b_plus_vals,
+        heat_flux_psi_e_b_e_vals,
+        heat_flux_psi_e_b_plus_vals,
+        b_e_psi_plus_vals,
+        b_e_b_plus_vals,
+        psi_plus_b_plus_vals
+    )
 
 class Simulation:
     def __init__(self, epsilon, N_0_squared, r_m, k, m, m_u, dt, total_time, randomness = True):
@@ -154,7 +168,21 @@ class Simulation:
         phi_plus = np.array([0.0, 0.0]),
         U = 0.01
     ):
-        self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals = simulate_numba(
+        (
+            self.phi_e_history,
+            self.phi_plus_history,
+            self.U_history,
+            self.R_vals,
+            self.k_e_psi_e_vals,
+            self.k_e_b_e_vals,
+            self.k_e_psi_plus_vals,
+            self.k_e_b_plus_vals,
+            self.heat_flux_psi_e_b_e_vals,
+            self.heat_flux_psi_e_b_plus_vals,
+            self.b_e_psi_plus_vals,
+            self.b_e_b_plus_vals,
+            self.psi_plus_b_plus_vals
+        ) = simulate_numba(
             self.num_steps,
             self.k_e_square,
             self.W_e,
@@ -172,6 +200,47 @@ class Simulation:
             U
         )
         # return len(self.switch_times), [t * self.dt for t in self.switch_times]
+
+    def get_json_simulation_data(self):
+        print("    Getting data in json format...")
+
+        psi_e_json = json.dumps(self.phi_e_history[:, 0].tolist())
+        b_e_json = json.dumps(self.phi_e_history[:, 1].tolist())
+        psi_plus_json = json.dumps(self.phi_plus_history[:, 0].tolist())
+        b_plus_json = json.dumps(self.phi_plus_history[:, 1].tolist())
+        U_list_json = json.dumps(self.U_history.tolist())
+        R_list_json = json.dumps(self.R_vals.tolist())
+        k_e_psi_e_list_json = json.dumps(self.k_e_psi_e_vals.tolist())
+        k_e_b_e_list_json = json.dumps(self.k_e_b_e_vals.tolist())
+        k_e_psi_plus_list_json = json.dumps(self.k_e_psi_plus_vals.tolist())
+        k_e_b_plus_list_json = json.dumps(self.k_e_b_plus_vals.tolist())
+        heat_flux_psi_e_b_e_list_json = json.dumps(self.heat_flux_psi_e_b_e_vals.tolist())
+        heat_flux_psi_e_b_plus_list_json = json.dumps(self.heat_flux_psi_e_b_plus_vals.tolist())
+        b_e_psi_plus_list_json = json.dumps(self.b_e_psi_plus_vals.tolist())
+        b_e_b_plus_list_json = json.dumps(self.b_e_b_plus_vals.tolist())
+        psi_plus_b_plus_list_json = json.dumps(self.psi_plus_b_plus_vals.tolist())
+        eta_list_json = json.dumps(self.eta_batch.tolist())
+
+        return [
+            f"{self.epsilon:.5f}",
+            f"{self.N_0_squared:.5f}",
+            psi_e_json,
+            b_e_json,
+            psi_plus_json,
+            b_plus_json,
+            U_list_json,
+            R_list_json,
+            k_e_psi_e_list_json,
+            k_e_b_e_list_json,
+            k_e_psi_plus_list_json,
+            k_e_b_plus_list_json,
+            heat_flux_psi_e_b_e_list_json,
+            heat_flux_psi_e_b_plus_list_json,
+            b_e_psi_plus_list_json,
+            b_e_b_plus_list_json,
+            psi_plus_b_plus_list_json,
+            eta_list_json
+        ]
 
     # def extract_reversal_data(self, window_size=5000):
     #     reversal_data = {}
@@ -277,7 +346,6 @@ class Simulation:
 #             b_e_b_plus_list.append(reversal_data[key]['b_e_b_plus'])
 #             psi_plus_b_plus_list.append(reversal_data[key]['psi_plus_b_plus'])
 #             eta_list.append(reversal_data[key]['eta'])
-
 
 
 # def save_simulation_data(simulations, output_file='all_simulation_data.csv'):

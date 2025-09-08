@@ -2,6 +2,7 @@ from trident import Simulation
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+import pandas as pd
 
 with open("./params.json", mode = "r", encoding = "utf-8") as f:
     params = json.load(f)
@@ -33,7 +34,6 @@ initial_sim = Simulation(
 print("Initial simulation running...")
 initial_sim.simulate()
 
-
 no_random_sim = Simulation(
     epsilon = epsilon,
     N_0_squared = N_0_squared,
@@ -47,6 +47,7 @@ no_random_sim = Simulation(
 )
 
 starting_step = 1000
+dataset = []
 
 print("No randomness simulation running...")
 for i in range(starting_step, initial_sim.U_history.shape[0], interval_steps):
@@ -62,4 +63,32 @@ for i in range(starting_step, initial_sim.U_history.shape[0], interval_steps):
         phi_plus = np.array([psi_plus, b_plus]),
         U = u
     )
+    dataset.append(no_random_sim.get_json_simulation_data())
 
+df = pd.DataFrame(
+    dataset,
+    columns = [
+        "eps",
+        "n_0_squared",
+        "psi_e",
+        "b_e",
+        "psi_plus",
+        "b_plus",
+        "u_list",
+        "r_list",
+        "k_e_psi_e_list",
+        "k_e_b_e_list",
+        "k_e_psi_plus_list",
+        "k_e_b_plus_list",
+        "heat_flux_psi_e_b_e_list",
+        "heat_flux_psi_e_b_plus_list",
+        "b_e_psi_plus_list",
+        "b_e_b_plus_list",
+        "psi_plus_b_plus_list",
+        "eta_list"
+    ]
+)
+
+print("Saving to file...")
+df.index.name = "id"
+df.to_csv("./deterministic_dataset.csv", index = True)

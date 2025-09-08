@@ -8,15 +8,29 @@ from numba import jit
 # import json
 
 @jit(nopython=True)
-def simulate_numba(num_steps, k_e_square, W_e, L_e_plus, W_plus, L_plus_e, eta_batch, dt, epsilon, r_m, k_plus_square, k):
-    phi_e = np.array([0.0, 0.0])
-    phi_plus = np.array([0.0, 0.0])
-    U = 0.01
+def simulate_numba(
+    num_steps,
+    k_e_square,
+    W_e,
+    L_e_plus,
+    W_plus,
+    L_plus_e,
+    eta_batch,
+    dt,
+    epsilon,
+    r_m,
+    k_plus_square,
+    k,
+    phi_e,
+    phi_plus,
+    U
+):
     
     phi_e_history = np.zeros((num_steps, 2))
     phi_plus_history = np.zeros((num_steps, 2))
     U_history = np.zeros(num_steps)
     R_vals = np.zeros(num_steps)
+
     # k_e_psi_e_vals = np.zeros(num_steps)
     # k_e_b_e_vals = np.zeros(num_steps)
     # k_e_psi_plus_vals = np.zeros(num_steps)
@@ -51,7 +65,6 @@ def simulate_numba(num_steps, k_e_square, W_e, L_e_plus, W_plus, L_plus_e, eta_b
         phi_plus[1] += phi_plus_dot[1] * dt
 
         R = 0.25 * k * (k_plus_square - k_e_square) * phi_e[0] * phi_plus[0]
-        # print(k)
         U_dot = R - r_m * U
         U += U_dot * dt
 
@@ -87,7 +100,7 @@ def simulate_numba(num_steps, k_e_square, W_e, L_e_plus, W_plus, L_plus_e, eta_b
     return phi_e_history, phi_plus_history, U_history, R_vals
 
 class Simulation:
-    def __init__(self, epsilon, N_0_squared, r_m, k, m, m_u, dt, total_time):
+    def __init__(self, epsilon, N_0_squared, r_m, k, m, m_u, dt, total_time, randomness = True):
         self.epsilon = epsilon
         self.N_0_squared = N_0_squared
         self.r_m = r_m
@@ -121,19 +134,43 @@ class Simulation:
         self.b_e_b_plus_vals = np.zeros(self.num_steps)
         self.psi_plus_b_plus_vals = np.zeros(self.num_steps)
 
+        self.randomness = randomness
+
         self.eta_batch = self.generate_eta_batch()
 
     def generate_eta_batch(self):
-        return np.random.normal(0, 1, size=(self.num_steps, 1))
+        if(self.randomness):
+            return np.random.normal(0, 1, size=(self.num_steps, 1))
+        return np.zeros((self.num_steps, 1))
 
     # def simulate(self):
     #     self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals, self.k_e_psi_e_vals, self.k_e_b_e_vals, self.k_e_psi_plus_vals, self.k_e_b_plus_vals, self.heat_flux_psi_e_b_e_vals, self.heat_flux_psi_e_b_plus_vals, self.b_e_psi_plus_vals, self.b_e_b_plus_vals, self.psi_plus_b_plus_vals, self.switch_times = simulate_numba(
     #         self.num_steps, self.k_e_square, self.W_e, self.L_e_plus, self.W_plus, self.L_plus_e, self.eta_batch, self.dt, self.epsilon, self.r_m, self.k_plus_square, self.k)
     #     return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
-    def simulate(self):
+    def simulate(
+        self,
+        phi_e = np.array([0.0, 0.0]),
+        phi_plus = np.array([0.0, 0.0]),
+        U = 0.01
+    ):
         self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals = simulate_numba(
-            self.num_steps, self.k_e_square, self.W_e, self.L_e_plus, self.W_plus, self.L_plus_e, self.eta_batch, self.dt, self.epsilon, self.r_m, self.k_plus_square, self.k)
+            self.num_steps,
+            self.k_e_square,
+            self.W_e,
+            self.L_e_plus,
+            self.W_plus,
+            self.L_plus_e,
+            self.eta_batch,
+            self.dt,
+            self.epsilon,
+            self.r_m,
+            self.k_plus_square,
+            self.k,
+            phi_e,
+            phi_plus,
+            U
+        )
         # return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
     # def extract_reversal_data(self, window_size=5000):

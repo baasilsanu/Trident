@@ -1,0 +1,6 @@
+{
+    "seed_value": 1,
+    "simulation": {
+        "interval_steps": 5000
+    }
+}

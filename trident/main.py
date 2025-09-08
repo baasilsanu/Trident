@@ -114,7 +114,7 @@ def simulate_numba(
     )
 
 class Simulation:
-    def __init__(self, epsilon, N_0_squared, r_m, k, m, m_u, dt, total_time, randomness = True):
+    def __init__(self, epsilon, N_0_squared, r_m, k, m, m_u, dt, total_time, randomness):
         self.epsilon = epsilon
         self.N_0_squared = N_0_squared
         self.r_m = r_m
@@ -162,12 +162,7 @@ class Simulation:
     #         self.num_steps, self.k_e_square, self.W_e, self.L_e_plus, self.W_plus, self.L_plus_e, self.eta_batch, self.dt, self.epsilon, self.r_m, self.k_plus_square, self.k)
     #     return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
-    def simulate(
-        self,
-        phi_e = np.array([0.0, 0.0]),
-        phi_plus = np.array([0.0, 0.0]),
-        U = 0.01
-    ):
+    def simulate(self, phi_e, phi_plus, U):
         (
             self.phi_e_history,
             self.phi_plus_history,
@@ -202,7 +197,7 @@ class Simulation:
         # return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
     def get_json_simulation_data(self):
-        print("    Getting data in json format...")
+        print("    - Getting data in json format...")
 
         psi_e_json = json.dumps(self.phi_e_history[:, 0].tolist())
         b_e_json = json.dumps(self.phi_e_history[:, 1].tolist())

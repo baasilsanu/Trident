@@ -6,10 +6,12 @@ import pandas as pd
 
 with open("./params.json", mode = "r", encoding = "utf-8") as f:
     params = json.load(f)
-    seed_value = params["seed_value"]
-    interval_steps = params["simulation"]["interval_steps"]
+    # seed_value = params["seed_value"]
+    num_runs = params["num_runs"]
+    interval_steps = params["deterministic_simulation"]["interval_steps"]
+    starting_step = params["deterministic_simulation"]["starting_step"]
 
-np.random.seed(seed_value)
+
 
 epsilon = 0.12394270273516043
 N_0_squared = 318.8640217310387
@@ -19,51 +21,64 @@ m = 2 * np.pi * 3
 m_u = 2 * np.pi * 7
 dt = 0.001
 total_time = 1000
+initial_U = 0.01
 
-initial_sim = Simulation(
-    epsilon = epsilon,
-    N_0_squared = N_0_squared,
-    r_m = r_m,
-    k = k,
-    m = m,
-    m_u = m_u,
-    dt = dt,
-    total_time = total_time
-)
-
-print("Initial simulation running...")
-initial_sim.simulate()
-
-no_random_sim = Simulation(
-    epsilon = epsilon,
-    N_0_squared = N_0_squared,
-    r_m = 0,
-    k = k,
-    m = m,
-    m_u = m_u,
-    dt = dt,
-    total_time = 1,  # 1000 time-steps
-    randomness = False
-)
-
-starting_step = 1000
 dataset = []
 
-print("No randomness simulation running...")
-for i in range(starting_step, initial_sim.U_history.shape[0], interval_steps):
-    psi_e = initial_sim.phi_e_history[i, 0]
-    b_e = initial_sim.phi_e_history[i, 1]
-    psi_plus = initial_sim.phi_plus_history[i, 0]
-    b_plus = initial_sim.phi_plus_history[i, 1]
-    u = initial_sim.U_history[i]
+for seed_val in range(num_runs):
+    print(f"==================== Random Seed: {seed_val} ====================")
+    np.random.seed(seed_val)
 
-    print(f"    Based on time-step {i} parameters")
-    no_random_sim.simulate(
-        phi_e = np.array([psi_e, b_e]),
-        phi_plus = np.array([psi_plus, b_plus]),
-        U = u
+    initial_sim = Simulation(
+        epsilon = epsilon,
+        N_0_squared = N_0_squared,
+        r_m = r_m,
+        k = k,
+        m = m,
+        m_u = m_u,
+        dt = dt,
+        total_time = total_time,
+        randomness = True
     )
-    dataset.append(no_random_sim.get_json_simulation_data())
+
+    print("Initial simulation running...")
+    initial_sim.simulate(
+        phi_e = np.array([0.0, 0.0]),
+        phi_plus = np.array([0.0, 0.0]),
+        U = initial_U
+    )
+
+    no_random_sim = Simulation(
+        epsilon = epsilon,
+        N_0_squared = N_0_squared,
+        r_m = 0,
+        k = k,
+        m = m,
+        m_u = m_u,
+        dt = dt,
+        total_time = 1,  # 1000 time-steps
+        randomness = False
+    )
+
+    print("Deterministic simulation running...")
+    for i in range(starting_step, initial_sim.U_history.shape[0], interval_steps):
+        psi_e = initial_sim.phi_e_history[i, 0]
+        b_e = initial_sim.phi_e_history[i, 1]
+        psi_plus = initial_sim.phi_plus_history[i, 0]
+        b_plus = initial_sim.phi_plus_history[i, 1]
+        u = initial_sim.U_history[i]
+
+        print(f"    Based on time-step {i} parameters")
+        no_random_sim.simulate(
+            phi_e = np.array([psi_e, b_e]),
+            phi_plus = np.array([psi_plus, b_plus]),
+            U = u
+        )
+        dataset.append(no_random_sim.get_json_simulation_data())
+
+    del initial_sim
+    del no_random_sim
+
 
 df = pd.DataFrame(
     dataset,

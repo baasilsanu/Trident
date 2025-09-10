@@ -4,6 +4,7 @@ import json
 import matplotlib.pyplot as plt
 import pandas as pd
 import gc
+import os
 
 with open("./params.json", mode = "r", encoding = "utf-8") as f:
     params = json.load(f)
@@ -11,6 +12,7 @@ with open("./params.json", mode = "r", encoding = "utf-8") as f:
     num_runs = params["num_runs"]
     save_seed_batch_size = params["save_seed_batch_size"]
     dataset_save_root_path = params["dataset_save_root_path"]
+    dataset_name = params["dataset_name"]
 
     epsilon = params["random_simulation"]["epsilon"]
     N_0_squared = params["random_simulation"]["N_0_squared"]
@@ -41,7 +43,12 @@ def save_to_csv(dataset, starting_idx, num_data_points):
     df = pd.DataFrame(dataset, columns = selected_features)
     df.index = range(starting_idx, num_data_points)
     df.index.name = "id"
-    df.to_csv(f"{dataset_save_root_path}/deterministic_dataset.csv", index = True, mode = "a")
+
+    if(os.path.exists(f"{dataset_save_root_path}/{dataset_name}")):
+        df.to_csv(f"{dataset_save_root_path}/{dataset_name}", index = True, header = False, mode = "a")
+        return
+
+    df.to_csv(f"{dataset_save_root_path}/{dataset_name}", index = True, header = True, mode = "a")
 
 
 

@@ -3,6 +3,7 @@
     "num_runs": 500,
     "save_seed_batch_size": 50,
     "dataset_save_root_path": ".",
+    "dataset_name": "deterministic_dataset.csv",
     "random_simulation": {
         "epsilon": 0.12394270273516043,
         "N_0_squared": 318.8640217310387,

@@ -1,8 +1,25 @@
 {
     "seed_value": 1,
-    "num_runs": 2500,
+    "num_runs": 500,
+    "save_seed_batch_size": 50,
+    "dataset_save_root_path": ".",
+    "random_simulation": {
+        "epsilon": 0.12394270273516043,
+        "N_0_squared": 318.8640217310387,
+        "r_m": 0.1,
+        "dt": 0.001,
+        "total_time": 500,
+        "initial_U": 0.01
+    },
     "deterministic_simulation": {
         "interval_steps": 5000,
-        "starting_step": 1000
+        "starting_step": 1000,
+        "selected_features": [
+            "psi_e",
+            "b_e",
+            "psi_plus",
+            "b_plus",
+            "u_list"
+        ]
     }
 }

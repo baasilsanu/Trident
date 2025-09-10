@@ -196,46 +196,30 @@ class Simulation:
         )
         # return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
-    def get_json_simulation_data(self):
-        print("    - Getting data in json format...")
+    def get_json_simulation_data(self, target_features):
+        # print("    - Getting data in json format...")
+        data_dict = {
+            "eps": f"{self.epsilon:.5f}",
+            "n_0_squared": f"{self.N_0_squared:.5f}",
+            "psi_e": json.dumps(self.phi_e_history[:, 0].tolist()),
+            "b_e": json.dumps(self.phi_e_history[:, 1].tolist()),
+            "psi_plus": json.dumps(self.phi_plus_history[:, 0].tolist()),
+            "b_plus": json.dumps(self.phi_plus_history[:, 1].tolist()),
+            "u_list": json.dumps(self.U_history.tolist()),
+            "r_list": json.dumps(self.R_vals.tolist()),
+            "k_e_psi_e_list": json.dumps(self.k_e_psi_e_vals.tolist()),
+            "k_e_b_e_list": json.dumps(self.k_e_b_e_vals.tolist()),
+            "k_e_psi_plus_list": json.dumps(self.k_e_psi_plus_vals.tolist()),
+            "k_e_b_plus_list": json.dumps(self.k_e_b_plus_vals.tolist()),
+            "heat_flux_psi_e_b_e_list": json.dumps(self.heat_flux_psi_e_b_e_vals.tolist()),
+            "heat_flux_psi_e_b_plus_list": json.dumps(self.heat_flux_psi_e_b_plus_vals.tolist()),
+            "b_e_psi_plus_list": json.dumps(self.b_e_psi_plus_vals.tolist()),
+            "b_e_b_plus_list": json.dumps(self.b_e_b_plus_vals.tolist()),
+            "psi_plus_b_plus_list": json.dumps(self.psi_plus_b_plus_vals.tolist()),
+            "eta_list": json.dumps(self.eta_batch.tolist())
+        }
 
-        psi_e_json = json.dumps(self.phi_e_history[:, 0].tolist())
-        b_e_json = json.dumps(self.phi_e_history[:, 1].tolist())
-        psi_plus_json = json.dumps(self.phi_plus_history[:, 0].tolist())
-        b_plus_json = json.dumps(self.phi_plus_history[:, 1].tolist())
-        U_list_json = json.dumps(self.U_history.tolist())
-        R_list_json = json.dumps(self.R_vals.tolist())
-        k_e_psi_e_list_json = json.dumps(self.k_e_psi_e_vals.tolist())
-        k_e_b_e_list_json = json.dumps(self.k_e_b_e_vals.tolist())
-        k_e_psi_plus_list_json = json.dumps(self.k_e_psi_plus_vals.tolist())
-        k_e_b_plus_list_json = json.dumps(self.k_e_b_plus_vals.tolist())
-        heat_flux_psi_e_b_e_list_json = json.dumps(self.heat_flux_psi_e_b_e_vals.tolist())
-        heat_flux_psi_e_b_plus_list_json = json.dumps(self.heat_flux_psi_e_b_plus_vals.tolist())
-        b_e_psi_plus_list_json = json.dumps(self.b_e_psi_plus_vals.tolist())
-        b_e_b_plus_list_json = json.dumps(self.b_e_b_plus_vals.tolist())
-        psi_plus_b_plus_list_json = json.dumps(self.psi_plus_b_plus_vals.tolist())
-        eta_list_json = json.dumps(self.eta_batch.tolist())
-
-        return [
-            f"{self.epsilon:.5f}",
-            f"{self.N_0_squared:.5f}",
-            psi_e_json,
-            b_e_json,
-            psi_plus_json,
-            b_plus_json,
-            U_list_json,
-            R_list_json,
-            k_e_psi_e_list_json,
-            k_e_b_e_list_json,
-            k_e_psi_plus_list_json,
-            k_e_b_plus_list_json,
-            heat_flux_psi_e_b_e_list_json,
-            heat_flux_psi_e_b_plus_list_json,
-            b_e_psi_plus_list_json,
-            b_e_b_plus_list_json,
-            psi_plus_b_plus_list_json,
-            eta_list_json
-        ]
+        return [data_dict[target_feature] for target_feature in target_features]
 
     # def extract_reversal_data(self, window_size=5000):
     #     reversal_data = {}

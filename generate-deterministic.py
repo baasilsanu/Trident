@@ -1,32 +1,31 @@
 from trident import Simulation
 import numpy as np
 import json
-import matplotlib.pyplot as plt
-import pandas as pd
 import gc
-import os
+from utils import save_to_csv
+
 
 with open("./params.json", mode = "r", encoding = "utf-8") as f:
     params = json.load(f)
     # seed_value = params["seed_value"]
-    num_runs = params["num_runs"]
-    save_seed_batch_size = params["save_seed_batch_size"]
-    dataset_save_root_path = params["dataset_save_root_path"]
-    dataset_name = params["dataset_name"]
+    num_runs = params["deterministic"]["num_runs"]
+    save_seed_batch_size = params["deterministic"]["save_seed_batch_size"]
+    dataset_save_root_path = params["deterministic"]["dataset_save_root_path"]
+    dataset_name = params["deterministic"]["dataset_name"]
 
-    epsilon = params["random_simulation"]["epsilon"]
-    N_0_squared = params["random_simulation"]["N_0_squared"]
-    r_m = params["random_simulation"]["r_m"]
+    epsilon = params["deterministic"]["random_simulation"]["epsilon"]
+    N_0_squared = params["deterministic"]["random_simulation"]["N_0_squared"]
+    r_m = params["deterministic"]["random_simulation"]["r_m"]
     k = 2 * np.pi * 6
     m = 2 * np.pi * 3
     m_u = 2 * np.pi * 7
-    dt = params["random_simulation"]["dt"]
-    total_time = params["random_simulation"]["total_time"]
-    initial_U = params["random_simulation"]["initial_U"]
+    dt = params["deterministic"]["random_simulation"]["dt"]
+    total_time = params["deterministic"]["random_simulation"]["total_time"]
+    initial_U = params["deterministic"]["random_simulation"]["initial_U"]
 
-    interval_steps = params["deterministic_simulation"]["interval_steps"]
-    starting_step = params["deterministic_simulation"]["starting_step"]
-    selected_features = params["deterministic_simulation"]["selected_features"]
+    interval_steps = params["deterministic"]["deterministic_simulation"]["interval_steps"]
+    starting_step = params["deterministic"]["deterministic_simulation"]["starting_step"]
+    selected_features = params["deterministic"]["deterministic_simulation"]["selected_features"]
 
 print("Expectation:")
 per_run_num = (int(total_time / dt) - starting_step) // interval_steps + 1
@@ -34,21 +33,6 @@ print(f"    Number of data points per run: {per_run_num}")
 print(f"    Number of total data points: {num_runs * per_run_num}")
 print(f"    Number of features: {len(selected_features)}")
 print()
-
-
-
-def save_to_csv(dataset, starting_idx, num_data_points):
-    print(f"Saving {len(dataset)} new data points to file...")
-
-    df = pd.DataFrame(dataset, columns = selected_features)
-    df.index = range(starting_idx, num_data_points)
-    df.index.name = "id"
-
-    if(os.path.exists(f"{dataset_save_root_path}/{dataset_name}")):
-        df.to_csv(f"{dataset_save_root_path}/{dataset_name}", index = True, header = False, mode = "a")
-        return
-
-    df.to_csv(f"{dataset_save_root_path}/{dataset_name}", index = True, header = True, mode = "a")
 
 
 
@@ -116,13 +100,25 @@ for seed_val in range(1, num_runs + 1):
     gc.collect()
 
     if(seed_val % save_seed_batch_size == 0):
-        save_to_csv(dataset, starting_idx, num_data_points)
+        save_to_csv(
+            dataset = dataset,
+            selected_features = selected_features,
+            start_idx = starting_idx,
+            end_idx = num_data_points,
+            dataset_save_path = f"{dataset_save_root_path}/{dataset_name}"
+        )
         
         dataset = []
         starting_idx = num_data_points
 
 
 if(len(dataset) != 0):
-    save_to_csv(dataset, starting_idx, num_data_points)
+    save_to_csv(
+        dataset = dataset,
+        selected_features = selected_features,
+        start_idx = starting_idx,
+        end_idx = num_data_points,
+        dataset_save_path = f"{dataset_save_root_path}/{dataset_name}"
+    )
 
 print(f"\nTotal number of data points: {num_data_points}")

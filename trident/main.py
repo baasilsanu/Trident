@@ -41,13 +41,17 @@ def simulate_numba(
     b_e_b_plus_vals = np.zeros(num_steps)
     psi_plus_b_plus_vals = np.zeros(num_steps)
 
-    # switch_times = []
+    jacobians = np.zeros((num_steps, 5, 5))
+
+    switch_times = []
 
     for i in range(num_steps):
         eta = eta_batch[i]
         xi = np.array([2 * np.sqrt(2) * eta[0] / np.sqrt(k_e_square), 0.0])
         phi_e_dot = np.zeros(2)
         phi_plus_dot = np.zeros(2)
+
+        jacobian = np.zeros((5, 5))
 
         phi_e_dot[0] = W_e[0, 0] * phi_e[0] + W_e[0, 1] * phi_e[1] + U * (
             L_e_plus[0, 0] * phi_plus[0] + L_e_plus[0, 1] * phi_plus[1]) + (np.sqrt(epsilon) * xi[0]) / np.sqrt(dt)
@@ -59,6 +63,30 @@ def simulate_numba(
         phi_plus_dot[1] = W_plus[1, 0] * phi_plus[0] + W_plus[1, 1] * phi_plus[1] + U * (
             L_plus_e[1, 0] * phi_e[0] + L_plus_e[1, 1] * phi_e[1])
 
+        jacobian[0, 0] = W_e[0, 0]
+        jacobian[0, 1] = W_e[0, 1]
+        jacobian[0, 2] = U * L_e_plus[0, 0]
+        jacobian[0, 3] = U * L_e_plus[0, 1]
+        jacobian[0, 4] = L_e_plus[0, 0] * phi_plus[0] + L_e_plus[0, 1] * phi_plus[1]
+
+        jacobian[1, 0] = W_e[1, 0]
+        jacobian[1, 1] = W_e[1, 1]
+        jacobian[1, 2] = U * L_e_plus[1, 0]
+        jacobian[1, 3] = U * L_e_plus[1, 1]
+        jacobian[1, 4] = L_e_plus[1, 0] * phi_plus[0] + L_e_plus[1, 1] * phi_plus[1]
+
+        jacobian[2, 0] = U * L_plus_e[0, 0]
+        jacobian[2, 1] = U * L_plus_e[0, 1]
+        jacobian[2, 2] = W_plus[0, 0]
+        jacobian[2, 3] = W_plus[0, 1]
+        jacobian[2, 4] = L_plus_e[0, 0] * phi_e[0] + L_plus_e[0, 1] * phi_e[1]
+
+        jacobian[3, 0] = U * L_plus_e[1, 0]
+        jacobian[3, 1] = U * L_plus_e[1, 1]
+        jacobian[3, 2] = W_plus[1, 0]
+        jacobian[3, 3] = W_plus[1, 1]
+        jacobian[3, 4] = L_plus_e[1, 0] * phi_e[0] + L_plus_e[1, 1] * phi_e[1]
+
         phi_e[0] += phi_e_dot[0] * dt
         phi_e[1] += phi_e_dot[1] * dt
         phi_plus[0] += phi_plus_dot[0] * dt
@@ -66,6 +94,13 @@ def simulate_numba(
 
         R = 0.25 * k * (k_plus_square - k_e_square) * phi_e[0] * phi_plus[0]
         U_dot = R - r_m * U
+
+        jacobian[4, 0] = 0.25 * k * (k_plus_square - k_e_square) * phi_plus[0]
+        jacobian[4, 1] = 0
+        jacobian[4, 2] = 0.25 * k * (k_plus_square - k_e_square) * phi_e[0]
+        jacobian[4, 3] = 0
+        jacobian[4, 4] = -r_m
+
         U += U_dot * dt
 
         phi_e_history[i, 0] = phi_e[0]
@@ -90,12 +125,12 @@ def simulate_numba(
         b_e_psi_plus_vals[i] = b_e*psi_plus
         b_e_b_plus_vals[i] = b_e*b_plus
         psi_plus_b_plus_vals[i] = psi_plus*b_plus
-        
 
+        jacobians[i] = jacobian
 
-        # if i > 0:
-        #     if U_history[i - 1] > 0 and U_history[i] < 0:
-        #         switch_times.append(i)
+        if i > 0:
+            if U_history[i - 1] > 0 and U_history[i] < 0:
+                switch_times.append(i)
     # return phi_e_history, phi_plus_history, U_history, R_vals, k_e_psi_e_vals, k_e_b_e_vals, k_e_psi_plus_vals, k_e_b_plus_vals, heat_flux_psi_e_b_e_vals, heat_flux_psi_e_b_plus_vals, b_e_psi_plus_vals, b_e_b_plus_vals, psi_plus_b_plus_vals, switch_times
     return (
         phi_e_history,
@@ -110,7 +145,9 @@ def simulate_numba(
         heat_flux_psi_e_b_plus_vals,
         b_e_psi_plus_vals,
         b_e_b_plus_vals,
-        psi_plus_b_plus_vals
+        psi_plus_b_plus_vals,
+        jacobians,
+        switch_times
     )
 
 class Simulation:
@@ -149,6 +186,12 @@ class Simulation:
         self.psi_plus_b_plus_vals = np.zeros(self.num_steps)
 
         self.randomness = randomness
+        self.jacobians = np.zeros((self.num_steps, 5, 5))
+        self.switch_times = None
+        self.reversals = {
+            "timesteps": [],
+            "data": []
+        }
 
         self.eta_batch = self.generate_eta_batch()
 
@@ -156,6 +199,14 @@ class Simulation:
         if(self.randomness):
             return np.random.normal(0, 1, size=(self.num_steps, 1))
         return np.zeros((self.num_steps, 1))
+    
+    def get_dominant_eigenvalues(self):
+        dominant_eigenvals = np.zeros(self.num_steps)
+        for i in range(self.num_steps):
+            vals, _ = np.linalg.eig(self.jacobians[i])
+            dominant_eigenvals[i] = np.max(vals.real)
+
+        return dominant_eigenvals
 
     # def simulate(self):
     #     self.phi_e_history, self.phi_plus_history, self.U_history, self.R_vals, self.k_e_psi_e_vals, self.k_e_b_e_vals, self.k_e_psi_plus_vals, self.k_e_b_plus_vals, self.heat_flux_psi_e_b_e_vals, self.heat_flux_psi_e_b_plus_vals, self.b_e_psi_plus_vals, self.b_e_b_plus_vals, self.psi_plus_b_plus_vals, self.switch_times = simulate_numba(
@@ -176,7 +227,9 @@ class Simulation:
             self.heat_flux_psi_e_b_plus_vals,
             self.b_e_psi_plus_vals,
             self.b_e_b_plus_vals,
-            self.psi_plus_b_plus_vals
+            self.psi_plus_b_plus_vals,
+            self.jacobians,
+            self.switch_times
         ) = simulate_numba(
             self.num_steps,
             self.k_e_square,
@@ -194,6 +247,7 @@ class Simulation:
             phi_plus,
             U
         )
+
         # return len(self.switch_times), [t * self.dt for t in self.switch_times]
 
     def get_json_simulation_data(self, target_features):
@@ -216,10 +270,28 @@ class Simulation:
             "b_e_psi_plus_list": json.dumps(self.b_e_psi_plus_vals.tolist()),
             "b_e_b_plus_list": json.dumps(self.b_e_b_plus_vals.tolist()),
             "psi_plus_b_plus_list": json.dumps(self.psi_plus_b_plus_vals.tolist()),
-            "eta_list": json.dumps(self.eta_batch.tolist())
+            "eta_list": json.dumps(self.eta_batch.tolist()),
+            "dom_eigenvals": json.dumps(self.get_dominant_eigenvalues().tolist())
         }
 
         return [data_dict[target_feature] for target_feature in target_features]
+
+
+    def get_json_reversal_data(self, target_features):
+        json_data = []
+
+        for reversal in self.reversals["data"]:
+            json_reversal = {
+                "eps": f"{self.epsilon:.5f}",
+                "n_0_squared": f"{self.N_0_squared:.5f}"
+            }
+            for feature, vals in reversal.items():
+                if(feature in target_features):
+                    json_reversal[feature] = json.dumps(vals.tolist())
+            json_data.append(json_reversal)
+
+        return json_data
+
 
     # def extract_reversal_data(self, window_size=5000):
     #     reversal_data = {}
@@ -257,6 +329,47 @@ class Simulation:
     #             }
     #         last_reversal_index = index
     #     return reversal_data
+
+
+    def extract_compressed_reversal_data(self, window_size = 5000):
+        step_units = window_size
+        last_reversal_index = -step_units
+
+        for switch_time in self.switch_times:
+            index = switch_time
+            if index - last_reversal_index < step_units:
+                continue  
+            
+            if index >= step_units and index + step_units < self.num_steps:
+                pre_reversal_positive = np.all(self.U_history[index - step_units:index] > 0)
+                post_reversal_negative = np.all(self.U_history[index:index + step_units] < 0)
+
+                if not pre_reversal_positive or not post_reversal_negative:
+                    continue
+                
+                self.reversals["timesteps"].append(switch_time)
+                self.reversals["data"].append(
+                    {
+                        "psi_e": self.phi_e_history[index - step_units:index + step_units][:, 0][9::10],
+                        "b_e": self.phi_e_history[index - step_units:index + step_units][:, 1][9::10],
+                        "psi_plus": self.phi_plus_history[index - step_units:index + step_units][:, 0][9::10],
+                        "b_plus": self.phi_plus_history[index - step_units:index + step_units][:, 1][9::10],
+                        "u_list": self.U_history[index - step_units:index + step_units][9::10],
+                        "r_list": self.R_vals[index - step_units:index + step_units][9::10],
+                        "k_e_psi_e_list": self.k_e_psi_e_vals[index - step_units:index + step_units][9::10],
+                        "k_e_b_e_list": self.k_e_b_e_vals[index - step_units:index + step_units][9::10],
+                        "k_e_psi_plus_list": self.k_e_psi_plus_vals[index - step_units:index + step_units][9::10],
+                        "k_e_b_plus_list": self.k_e_b_plus_vals[index - step_units:index + step_units][9::10],
+                        "heat_flux_psi_e_b_e_list": self.heat_flux_psi_e_b_e_vals[index - step_units:index + step_units][9::10],
+                        "heat_flux_psi_e_b_plus_list": self.heat_flux_psi_e_b_plus_vals[index - step_units:index + step_units][9::10],
+                        "b_e_psi_plus_list": self.b_e_psi_plus_vals[index - step_units:index + step_units][9::10],
+                        "b_e_b_plus_list": self.b_e_b_plus_vals[index - step_units:index + step_units][9::10],
+                        "psi_plus_b_plus_list": self.psi_plus_b_plus_vals[index - step_units:index + step_units][9::10],
+                        "eta_list": self.eta_batch[index - step_units:index + step_units][9::10],
+                        "dom_eigenvals": self.get_dominant_eigenvalues()[index - step_units:index + step_units][9::10]
+                    }
+                )
+            last_reversal_index = index
     
     # def compress(self):
     #     self.phi_e_history = self.phi_e_history[9::10]
